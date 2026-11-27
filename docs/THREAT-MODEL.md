@@ -7,7 +7,7 @@ Assets: input records, project budgets, schedules, identities, outputs, reposito
 | Prompt injection | strict numeric schema; no free-text documents; no agent execution in core | host may read instructions before validation; isolate intake |
 | Data disclosure | no network code; no raw input echoes; public/synthetic gate | false declarations, numeric covert channels, model context and outputs |
 | Filesystem overwrite | exclusive hard-link publication; new output required | parent-directory races, links/junctions, crash remnants; trusted directory needed |
-| Parser/resource abuse | byte, row, edge and numeric bounds; reject duplicate keys | process-level quotas/timeouts still needed |
+| Parser/resource abuse | byte, nesting depth, row, edge and numeric bounds; reject duplicate keys | process-level quotas/timeouts still needed |
 | Supply chain | stdlib only, allowlisted ZIPs, checksums | Python/OS/CI actions and release account compromise; signatures and SBOM pending |
 | Access control | no service or shared database | host ACLs, tenant isolation, SSO, encryption not implemented |
 | Wrong decisions | deterministic formulas, explicit limitations | bad baseline, missing evidence, misuse of metrics |
