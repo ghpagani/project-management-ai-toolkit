@@ -1,0 +1,3 @@
+# Agent instructions
+
+Use only synthetic or authorized public data. Read SECURITY.md and docs/THREAT-MODEL.md before modifying code. Never browse private directories, read secrets, weaken sandbox, or transmit data. Preserve strict validation and non-overwrite output. Use deterministic math, original documentation, and regression tests. Work on a separate branch. Never push, merge, publish, deploy or connect institutional systems without explicit authorization. No claims of zero leakage. Do not copy proprietary or noncommercial licensed material into MIT files. Keep version, manifests, skill heading and packaging consistent. Document actual checks and remaining risks.

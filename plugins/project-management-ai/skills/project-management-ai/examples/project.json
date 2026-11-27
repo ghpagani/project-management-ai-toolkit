@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "classification": "synthetic",
+  "project_id": "P001",
+  "schedule": [
+    {
+      "id": "T001",
+      "duration_days": 5,
+      "predecessors": []
+    },
+    {
+      "id": "T002",
+      "duration_days": 8,
+      "predecessors": [
+        "T001"
+      ]
+    },
+    {
+      "id": "T003",
+      "duration_days": 3,
+      "predecessors": [
+        "T001"
+      ]
+    },
+    {
+      "id": "T004",
+      "duration_days": 2,
+      "predecessors": [
+        "T002",
+        "T003"
+      ]
+    }
+  ],
+  "evm": {
+    "currency": "BRL",
+    "bac": 100000000,
+    "pv": 70000000,
+    "ev": 55000000,
+    "ac": 65000000
+  },
+  "risks": {
+    "high_threshold": 15,
+    "items": [
+      {
+        "id": "R001",
+        "probability": 4,
+        "impact": 5,
+        "response_assigned": false
+      },
+      {
+        "id": "R002",
+        "probability": 2,
+        "impact": 3,
+        "response_assigned": true
+      }
+    ]
+  },
+  "raci": [
+    {
+      "task_id": "T001",
+      "assignments": [
+        {
+          "role_id": "U001",
+          "code": "RA"
+        }
+      ]
+    },
+    {
+      "task_id": "T002",
+      "assignments": [
+        {
+          "role_id": "U001",
+          "code": "A"
+        },
+        {
+          "role_id": "U002",
+          "code": "R"
+        }
+      ]
+    },
+    {
+      "task_id": "T003",
+      "assignments": [
+        {
+          "role_id": "U002",
+          "code": "R"
+        }
+      ]
+    }
+  ]
+}

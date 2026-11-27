@@ -1,0 +1,12 @@
+{
+  "name": "project-management-ai-marketplace",
+  "plugins": [
+    {
+      "name": "project-management-ai",
+      "source": {
+        "source": "local",
+        "path": "./plugins/project-management-ai"
+      }
+    }
+  ]
+}
