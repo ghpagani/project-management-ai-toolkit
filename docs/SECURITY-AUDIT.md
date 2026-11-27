@@ -1,0 +1,18 @@
+# Security audit / Auditoria de segurança
+
+2026-11-27; preliminary code review of e1ca09c. Synthetic tests only. No claim of absolute security or institutional approval.
+
+| Finding | Status and evidence | Residual risk / next action |
+|---|---|---|
+| Declared classification | Engine accepts only synthetic/public_authorized | False declarations and numeric covert channels are not detected; IDs can encode sensitive values. Gate intake before any model or tool receives data. |
+| Prompt injection | Closed fields, bounded identifiers, no free text in engine; synthetic injected identifier rejected | Direct/indirect injection can reach host before engine validation, or via tools, memory, logs and retrieved content. Host privileges and egress must be independently restricted. |
+| Filesystem | Regular-file checks and no-follow where available; exclusive hard-link publication, fail closed on unsupported filesystem | Parent links, junctions and races remain possible; trusted private directories and ACLs are required. No adversarial concurrent or junction test performed. |
+| Parser and resource exhaustion | 1 MB cap, list/edge limits, duplicate keys including escaped equivalents rejected; malformed/deep input tested | OS process memory/time quotas remain necessary; no fuzzing or performance stress campaign completed. |
+| Supply chain | stdlib core, allowlisted deterministic ZIPs, SHA256SUMS, CI read-only permissions and no persisted checkout credential | Checksums alone do not authenticate a publisher; actions use mutable version tags. Pin reviewed immutable action SHAs, assess SBOM and signed provenance before release. |
+| Confidentiality of logs and output | CLI avoids raw input in errors, output potentially sensitive | Paths and OS metadata, crash remnants, agent context, backups and network are host concerns; no actual host isolation test. |
+
+A limited local pattern scan of tracked files, selected new files and the single reachable historical commit found zero matches for private-key headers, GitHub token formats, AWS access key IDs and long bearer tokens. It is not a comprehensive credential or personal-data scan. The pre-existing untracked directory was excluded and preserved. The symlink test was skipped on Windows without elevation; junctions, malicious parent swaps and inherited ACLs remain unverified. Eight concurrent synthetic writers produced exactly one report, but this does not establish security against hostile directories. SHA-256 identifies content only when the checksum has an authenticated source; signed provenance and signature verification are future work. CI actions are pinned to full commit IDs resolved from their official repositories; tag updates require review. Branch protection, private vulnerability reporting, actual host installation and signatures have not been independently verified. Do not use sensitive institutional inputs.
+
+The candidate builder now generates a CycloneDX 1.5 file inventory for each archive and includes it in SHA256SUMS. It covers the bundled files, not the interpreter, OS, build environment or CI actions; independent schema validation and signed provenance remain outstanding. Checksums and SBOMs are not signatures. Public Preview and institutional production are separate decisions: confidential institutional processing remains blocked.
+
+References: [NIST SSDF](https://csrc.nist.gov/pubs/sp/800/218/final), [OWASP prompt injection](https://genai.owasp.org/llm2026/llm012026-prompt-injection/), [OWASP sensitive disclosure](https://genai.owasp.org/llm2026/llm022026-sensitive-information-disclosure/). These inform risk assessment; no conformance is claimed.

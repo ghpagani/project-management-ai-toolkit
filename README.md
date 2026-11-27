@@ -1,6 +1,6 @@
 # Project Management AI Toolkit
 
-v0.1.0 — independent public preview. Original MIT-licensed code and guidance for project management, with deterministic CPM, EVM, ordinal risk and RACI review. No external dependencies or network calls in the engine. **Synthetic or explicitly authorized public data only. Not approved for sensitive institutional data.** A skill is not a security boundary.
+v0.1.1 — independent public preview. Original MIT-licensed code and guidance for project management, with deterministic CPM, EVM, ordinal risk and RACI review. No external dependencies or network calls in the engine. **Synthetic or explicitly authorized public data only. Not approved for sensitive institutional data.** A skill is not a security boundary.
 
 Python 3.11+ (3.11–3.14 intended; see validation report for actual test environment). Use a supported, patched Python runtime. From the repository root, run `python -B -m unittest discover -s tests -v` and `python scripts/validate_package.py`. Create a private output folder outside the repository, then run:
 

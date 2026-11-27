@@ -2,7 +2,7 @@
 name: project-management-ai
 description: Support project planning, schedule analysis, earned value, risk and responsibility reviews using deterministic local tools and evidence. Use for project management, CPM, EVM, RACI and governance. Public or synthetic data only in this preview.
 ---
-# Project Management AI Toolkit v0.1.0
+# Project Management AI Toolkit v0.1.1
 
 This preview is NOT approved for confidential data. The skill is guidance, not a security boundary. Do not request internal records, personal data, beneficiary information, precise sensitive locations, financial records, credentials or private donor material. Do not read connected apps, browse private directories, access secrets, run remote tools, upload files, publish or make decisions on behalf of an organization. If the host has already received confidential material, stop processing and follow the organization's incident procedure; do not claim deletion.
 

@@ -10,8 +10,9 @@ import tempfile
 from decimal import Decimal, localcontext, ROUND_HALF_UP
 from pathlib import Path
 
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 MAX_BYTES = 1_000_000
+MAX_JSON_DEPTH = 64
 MAX_ROWS = 2000
 MAX_EDGES = 20000
 MAX_CENTS = 10**14
@@ -54,7 +55,27 @@ def reject_number(_):
 def parse(raw):
     require(len(raw) <= MAX_BYTES, 'INPUT_TOO_LARGE')
     try:
-        return json.loads(raw.decode('utf-8'), object_pairs_hook=object_pairs,
+        text = raw.decode('utf-8')
+        depth = 0
+        in_string = False
+        escaped = False
+        for char in text:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == '\\':
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+            elif char == '"':
+                in_string = True
+            elif char in '[{':
+                depth += 1
+                require(depth <= MAX_JSON_DEPTH, 'JSON_TOO_DEEP')
+            elif char in ']}':
+                depth -= 1
+                require(depth >= 0, 'INVALID_JSON')
+        return json.loads(text, object_pairs_hook=object_pairs,
                           parse_float=reject_number, parse_constant=reject_number)
     except (UnicodeError, ValueError, RecursionError) as e:
         if isinstance(e, Invalid):
@@ -108,7 +129,11 @@ def schedule(tasks):
         ls[i] = lf[i] - taskmap[i]
     return {'duration_days':finish,'tasks':[{'id':i,'early_start':es[i],'early_finish':ef[i],
         'late_start':ls[i],'late_finish':lf[i],'total_float':ls[i]-es[i],
-        'critical':ls[i]==es[i]} for i in sorted(taskmap)]}
+        'critical':ls[i]==es[i], 'calculation': {'duration_days':taskmap[i],
+        'predecessors':sorted(deps[i]), 'successors':sorted(children[i])}} for i in sorted(taskmap)],
+        'calculation': {'early_start':'max(predecessor early_finish, default 0)',
+        'early_finish':'early_start + duration_days', 'late_finish':'min(successor late_start, default project duration)',
+        'late_start':'late_finish - duration_days', 'total_float':'late_start - early_start'}}
 
 def evm(data):
     keys(data, 'currency bac pv ev ac')
@@ -124,7 +149,12 @@ def evm(data):
         return {'currency':data['currency'],'unit':'minor_currency_unit','bac':bac,'pv':pv,'ev':ev,'ac':ac,
                 'cv':ev-ac,'sv':ev-pv,'cpi':ratio(ev,ac),'spi':ratio(ev,pv),'eac_cpi':eac,
                 'etc_cpi':None if eac is None else eac-ac,'vac_cpi':None if eac is None else bac-eac,
-                'eac_assumption':'remaining_work_at_current_cost_efficiency'}
+                'eac_assumption':'remaining_work_at_current_cost_efficiency',
+                'calculation': {'cpi':{'numerator':ev,'denominator':ac,'rounded_to_zero':bool(ev and ac and ratio(ev,ac)=='0.0000')},
+                'spi':{'numerator':ev,'denominator':pv,'rounded_to_zero':bool(ev and pv and ratio(ev,pv)=='0.0000')},
+                'formulas':{'cv':'ev - ac','sv':'ev - pv','cpi':'ev / ac','spi':'ev / pv',
+                'eac_cpi':'bac * ac / ev','etc_cpi':'eac_cpi - ac','vac_cpi':'bac - eac_cpi'},
+                'rounding':'ratios: half-up to 4 decimals; EAC: half-up to minor unit; unrounded inputs used'}}
 
 def risks(data):
     keys(data,'high_threshold items'); threshold=integer(data['high_threshold'],1,25)
@@ -133,7 +163,8 @@ def risks(data):
         keys(r,'id probability impact response_assigned')
         i=identifier(r['id'],'R'); p=integer(r['probability'],1,5); v=integer(r['impact'],1,5)
         require(type(r['response_assigned']) is bool,'INVALID_BOOLEAN')
-        out.append({'id':i,'score':p*v,'high':p*v>=threshold,'response_missing':p*v>=threshold and not r['response_assigned']})
+        out.append({'id':i,'score':p*v,'high':p*v>=threshold,'response_missing':p*v>=threshold and not r['response_assigned'],
+                    'calculation':{'probability':p,'impact':v,'high_threshold':threshold,'response_assigned':r['response_assigned']}})
     unique([r['id'] for r in out]); return sorted(out,key=lambda r:r['id'])
 
 def raci(data):
@@ -161,15 +192,35 @@ def review(data):
             'project_id':pid,'schedule':s,'evm':e,'risks':r,'raci':a,'raci_missing_tasks':missing,
             'limitations':['PREVIEW_NOT_CERTIFICATION','DECLARED_CLASSIFICATION_NOT_DLP','CPM_FINISH_START_ZERO_LAG_SINGLE_CALENDAR','HUMAN_REVIEW_REQUIRED']}
 
-def write_report(path, report):
+def render_markdown(report, lang):
+    labels = {
+        'en': ('Project review', 'Schedule', 'Earned value', 'Risks', 'Responsibilities',
+               'Human review required. Classification is declared, not verified. Forecast assumes current cost efficiency continues.'),
+        'pt-BR': ('Revisão de projeto', 'Cronograma', 'Valor agregado', 'Riscos', 'Responsabilidades',
+                  'Revisão humana obrigatória. A classificação é declarada, não verificada. A projeção pressupõe continuidade da eficiência atual de custos.')}
+    title, schedule_label, evm_label, risk_label, raci_label, note = labels[lang]
+    sections = [(schedule_label, report['schedule']), (evm_label, report['evm']),
+                (risk_label, report['risks']), (raci_label, {'raci':report['raci'], 'missing':report['raci_missing_tasks']})]
+    lines = ['# ' + title, '', note, '', 'Project ID: ' + report['project_id'],
+             'Engine: ' + report['engine_version'], 'Classification: ' + report['classification'], '']
+    for heading, value in sections:
+        lines.extend(['## ' + heading, '', '```json', json.dumps(value, indent=2, sort_keys=True, ensure_ascii=True), '```', ''])
+    return '\n'.join(lines)
+
+
+def write_report(path, report, output_format='json', lang='en'):
     # Same directory temporary file and atomic hard-link publication, no overwrite.
     # Fail closed if hard links are unsupported. Directory must be trusted/private.
-    path=Path(path); require(path.suffix.lower()=='.json','OUTPUT_EXTENSION')
+    path=Path(path); require(path.suffix.lower()==('.md' if output_format == 'md' else '.json'),'OUTPUT_EXTENSION')
     if path.exists() or path.is_symlink(): raise Invalid('OUTPUT_EXISTS')
     fd,tmp=tempfile.mkstemp(prefix='.pm-review-',dir=path.parent)
     try:
         with os.fdopen(fd,'w',encoding='utf-8',newline='\n') as f:
-            json.dump(report,f,indent=2,sort_keys=True,ensure_ascii=True); f.write('\n'); f.flush(); os.fsync(f.fileno())
+            if output_format == 'md':
+                f.write(render_markdown(report, lang))
+            else:
+                json.dump(report,f,indent=2,sort_keys=True,ensure_ascii=True); f.write('\n')
+            f.flush(); os.fsync(f.fileno())
         os.link(tmp,path)
     finally:
         os.unlink(tmp)
@@ -177,9 +228,11 @@ def write_report(path, report):
 def main(argv=None):
     parser=argparse.ArgumentParser(description='Offline preview; synthetic or authorized public data only. Never use confidential data.')
     parser.add_argument('--input',required=True); parser.add_argument('--out',required=True)
+    parser.add_argument('--format',choices=('json','md'),default='json')
+    parser.add_argument('--lang',choices=('en','pt-BR'),default='en')
     args=parser.parse_args(argv)
     try:
-        result=review(safe_input(args.input)); write_report(args.out,result)
+        result=review(safe_input(args.input)); write_report(args.out,result,args.format,args.lang)
     except Invalid as e:
         print('Review blocked: '+str(e),file=sys.stderr); return 2
     except (OSError,RecursionError,ValueError,TypeError):
